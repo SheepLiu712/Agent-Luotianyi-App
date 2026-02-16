@@ -1,0 +1,2 @@
+- [ ] 登陆界面中把AsyncStorage改为Expo SecureStore；
+- [ ] 尝试和服务器通信，通过登录接口测试；
