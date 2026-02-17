@@ -42,3 +42,6 @@ assets/images_ref
 # generated native folders
 /ios
 /android
+
+#vscode
+.vscode

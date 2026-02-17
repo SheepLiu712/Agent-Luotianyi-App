@@ -1,8 +1,8 @@
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
-import LoginScreen from './login';
 import Index from './index';
+import LoginScreen from './login';
 
 export default function RootLayout() {
   const { isLoggedIn, isLoading, login, register } = useAuth();

@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,
-  KeyboardAvoidingView, Platform, ScrollView, Keyboard,
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView, Platform, ScrollView,
+  StyleSheet,
+  Text, TextInput, TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -64,8 +68,8 @@ export default function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
     >
       <View style={[styles.container, { paddingTop: insets.top + 40, paddingBottom: insets.bottom }]}>
         {/* 标题 */}
-        <Text style={styles.title}>洛天依 AI</Text>
-        <Text style={styles.subtitle}>Agent Luotianyi</Text>
+        <Text style={styles.title}>小洛聊天室</Text>
+        <Text style={styles.subtitle}>Chat with LuoTianyi</Text>
 
         {/* Tab 切换 */}
         <View style={styles.tabContainer}>
