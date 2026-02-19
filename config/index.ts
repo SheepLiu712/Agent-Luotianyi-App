@@ -7,6 +7,12 @@ export const server_config = {
   
   // 可以添加其他配置项
   API_TIMEOUT: 10000, // 10秒超时
+  LOAD_HISTORY_COUNT: 20, // 每次加载历史记录的条数
+};
+
+export const local_config = {
+  // 本地配置项示例
+  ERROR_IMAGE: require('../assets/images/error_image.png'),
 };
 
 export default server_config;

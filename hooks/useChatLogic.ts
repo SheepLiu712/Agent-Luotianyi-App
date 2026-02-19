@@ -1,12 +1,11 @@
-import { useState, useRef } from 'react';
-import { Keyboard, FlatList } from 'react-native';
+import { useRef, useState } from 'react';
+import { FlatList, Keyboard } from 'react-native';
 import { ChatMessage } from '../components/ChatBubbles';
 
 export const useChatLogic = () => {
   const [inputText, setInputText] = useState('');
   const [processing, setProcessing] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', type: 'text', content: '你好！我是洛天依。', isUser: false, timestamp: Date.now() }
   ]);
   const flatListRef = useRef<FlatList>(null);
 
@@ -21,13 +20,13 @@ export const useChatLogic = () => {
     }
 
     const newMessage: ChatMessage = {
-      id: Date.now().toString(),
+      uuid: Date.now().toString(),
       type: 'text',
       content: inputText,
       isUser: true,
       timestamp: Date.now()
     };
-    setMessages([...messages, newMessage]);
+    setMessages([newMessage, ...messages]);
     setInputText('');
     Keyboard.dismiss();
 
@@ -43,13 +42,13 @@ export const useChatLogic = () => {
     // 模拟回复
     setTimeout(() => {
       const botReply: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        uuid: (Date.now() + 1).toString(),
         type: 'text',
         content: '我收到了你的消息~',
         isUser: false,
         timestamp: Date.now()
       };
-      setMessages(prev => [...prev, botReply]);
+      setMessages(prev => [botReply, ...prev]);
       
       // 处理完成，恢复可发送状态
       setProcessing(false);
@@ -66,6 +65,16 @@ export const useChatLogic = () => {
     // TODO: 后续实现图片选择功能
   };
 
+  const addHistoryMessage = (newMessages: ChatMessage[]) => {
+    const nowScrollIndex = messages.length - 1; // 当前最新消息的索引
+    setMessages(prev => [...prev, ...newMessages]); // inverted order
+    // 恢复之前的滚动位置
+    if(nowScrollIndex < 0) return; // 没有消息时不滚动
+    setTimeout(() => {
+        flatListRef.current?.scrollToIndex({ index: nowScrollIndex, animated: false });
+    }, 10);
+  };
+
   return {
     // 状态
     inputText,
@@ -77,6 +86,7 @@ export const useChatLogic = () => {
     
     // 方法
     setInputText,
+    addHistoryMessage,
     handleSendText,
     handleSendImage,
   };

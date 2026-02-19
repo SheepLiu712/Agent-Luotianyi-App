@@ -124,7 +124,7 @@ export function useAuth() {
         await AsyncStorage.removeItem(USERNAME_KEY);
         await AsyncStorage.removeItem(AUTOLOGIN_TOKEN_KEY);
       }
-
+      console.log('登录成功，用户:', username);
       setAuthState(prev => ({
         ...prev,
         isLoggedIn: true,

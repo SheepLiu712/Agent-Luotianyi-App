@@ -1,12 +1,20 @@
+import Constants from 'expo-constants';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View, TextInput, TouchableOpacity, Image, StyleSheet, useWindowDimensions, Keyboard, FlatList
+  FlatList,
+  Image,
+  Keyboard,
+  StyleSheet,
+  TextInput, TouchableOpacity,
+  useWindowDimensions,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useEffect, useRef } from 'react';
 import { WebView } from 'react-native-webview';
-import Constants from 'expo-constants';
 import { MessageItem } from '../components/ChatBubbles';
+import { useAuth } from '../hooks/useAuth';
 import { useChatLogic } from '../hooks/useChatLogic';
+import { useHistoryLogic } from "../hooks/useHistoryLogic";
 
 export default function Index() {
   const insets = useSafeAreaInsets();
@@ -29,9 +37,14 @@ export default function Index() {
     canSend,
     canSendImage,
     setInputText,
+
     handleSendText,
     handleSendImage,
   } = useChatLogic();
+
+  const { username, message_token } = useAuth();
+
+  const { loadHistory } = useHistoryLogic();
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
@@ -47,6 +60,16 @@ export default function Index() {
     };
   }, []);
 
+  useEffect(() => {
+    // 在组件加载时，自动加载一次历史记录
+    if (username && message_token) {
+      console.log('Loading history with:', { username, message_token });
+      loadHistory(username, message_token);
+    }
+    else {
+      console.warn('无法加载历史记录，缺少认证信息');
+    }
+  }); // 空依赖数组确保只在组件挂载时执行一次
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
@@ -102,12 +125,13 @@ export default function Index() {
           <FlatList
             ref={flatListRef}
             data={messages}
+            inverted={true} // 反转列表，使最新消息为0位置。
             renderItem={({ item }) => <MessageItem message={item} />}
             keyExtractor={(item) => item.id}
             style={styles.chatList}
             contentContainerStyle={styles.chatListContent}
             showsVerticalScrollIndicator={true}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onContentSizeChange={() => {if(messages.length > 0) flatListRef.current?.scrollToIndex({ animated: true, index: 0 });}} // 内容变化时滚动到底部)}
             onScrollBeginDrag={Keyboard.dismiss} // 滚动时自动收起键盘
           />
         </View>

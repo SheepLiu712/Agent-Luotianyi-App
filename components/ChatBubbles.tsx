@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { CachedImage } from './CachedImage';
 
 // 消息类型定义
 export interface ChatMessage {
-  id: string;
+  uuid: string;
   type: 'text' | 'image';
   content: string; // 对于文本是文字内容，对于图片是图片路径
   isUser: boolean;
@@ -30,15 +31,15 @@ export const ChatBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
 
 // 图片气泡组件
 export const ChatImageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
-  const { content, isUser } = message;
+  const { content, isUser, uuid } = message;
 
   return (
     <View style={styles.imageBubbleContainer}>
       <View style={isUser ? styles.imageWrapperUser : styles.imageWrapperBot}>
-        <Image
-          source={{ uri: content }}
+        <CachedImage
+          message_id={uuid}
+          localUri={content}
           style={styles.chatImage}
-          resizeMode="contain"
         />
       </View>
     </View>
