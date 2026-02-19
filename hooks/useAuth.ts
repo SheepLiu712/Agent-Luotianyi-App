@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
+import { auth } from '../components/auth';
 import { server_config } from '../config/index';
 import { encryptPassword, getPublicKey } from '../utils/crypto';
 
@@ -10,18 +11,14 @@ const AUTOLOGIN_TOKEN_KEY = 'auto_login_token';
 export interface AuthState {
   isLoggedIn: boolean;
   isLoading: boolean;  // 正在向服务器请求
-  username: string;
   publicKeyLoaded: boolean;  // 公钥是否已加载
-  message_token: string; // 发送消息时使用的token，登录后从服务器获取并存储
 }
 
 export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>({
     isLoggedIn: false,
     isLoading: true,
-    username: '',
     publicKeyLoaded: false,
-    message_token: '',
   });
 
   const checkAutoLogin = useCallback(async () => {
@@ -50,9 +47,9 @@ export function useAuth() {
               ...prev,
               isLoggedIn: true,
               isLoading: false,
-              username: savedUsername,
-              message_token: result.message_token, // 存储从服务器获取的消息token
             }));
+            auth.username = savedUsername;
+            auth.message_token = result.message_token;
             return;
           }
         }
@@ -128,9 +125,9 @@ export function useAuth() {
       setAuthState(prev => ({
         ...prev,
         isLoggedIn: true,
-        message_token: result.message_token, // 存储从服务器获取的消息token
-        username,
       }));
+      auth.username = username;
+      auth.message_token = result.message_token;
 
       return { success: true, message: '登录成功' };
     } catch (e) {
@@ -180,9 +177,9 @@ export function useAuth() {
     setAuthState(prev => ({
       ...prev,
       isLoggedIn: false,
-      username: '',
-      message_token: '',
     }));
+    auth.username = "";
+    auth.message_token = "";
   }, []);
 
   return {

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { FlatList, Keyboard } from 'react-native';
 import { ChatMessage } from '../components/ChatBubbles';
 
@@ -65,15 +65,21 @@ export const useChatLogic = () => {
     // TODO: 后续实现图片选择功能
   };
 
-  const addHistoryMessage = (newMessages: ChatMessage[]) => {
-    const nowScrollIndex = messages.length - 1; // 当前最新消息的索引
-    setMessages(prev => [...prev, ...newMessages]); // inverted order
-    // 恢复之前的滚动位置
-    if(nowScrollIndex < 0) return; // 没有消息时不滚动
-    setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: nowScrollIndex, animated: false });
-    }, 10);
-  };
+  const addHistoryMessage = useCallback((newMessages: ChatMessage[]) => {
+    setMessages(prev => {
+      const nowScrollIndex = prev.length - 1; // 当前最新消息的索引
+      // 将newMessages倒序添加到前面，这样FlatList才能正确显示历史消息
+      
+      const next = [...prev, ...newMessages.reverse()]; // inverted order
+      // 恢复之前的滚动位置
+      if (nowScrollIndex >= 0) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index: nowScrollIndex, animated: false });
+        }, 10);
+      }
+      return next;
+    });
+  }, []);
 
   return {
     // 状态

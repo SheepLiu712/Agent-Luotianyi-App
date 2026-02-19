@@ -2,9 +2,8 @@ import { local_config } from '@/config';
 import * as FileSystem from 'expo-file-system/legacy';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ImageStyle, StyleProp, View } from 'react-native';
-import { useAuth } from '../hooks/useAuth';
 import { getImage, ImageResponse, updateImagePath } from '../utils/getHistory';
-
+import { auth } from './auth';
 
 const ERROR_IMAGE_URI = Image.resolveAssetSource(local_config.ERROR_IMAGE).uri;
 
@@ -17,7 +16,6 @@ interface CachedImageProps {
 export const CachedImage: React.FC<CachedImageProps> = ({ message_id, localUri, style }) => {
     const [imgSource, setImgSource] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    const { username, message_token } = useAuth();
 
     useEffect(() => {
         let isMounted = true;
@@ -31,10 +29,10 @@ export const CachedImage: React.FC<CachedImageProps> = ({ message_id, localUri, 
                     if (isMounted) setImgSource(fileInfo.uri);
                 } else {
                     // 2. 本地不存在，尝试从服务器获取图片
-                    const result: ImageResponse = await getImage(username!, message_token!, message_id);
+                    const result: ImageResponse = await getImage(auth.username, auth.message_token, message_id);
                     if (result.success && result.newClientPath) {
                         // 3. 成功获取并缓存图片后，更新服务器记录的路径
-                        updateImagePath(username!, message_token!, message_id, result.newClientPath);
+                        updateImagePath(auth.username, auth.message_token, message_id, result.newClientPath);
                         if (isMounted) setImgSource(result.newClientPath);
                     }
                     else {
@@ -52,7 +50,7 @@ export const CachedImage: React.FC<CachedImageProps> = ({ message_id, localUri, 
 
         loadImg();
         return () => { isMounted = false; }; // 防止组件卸载后还在设置状态
-    }, [message_id, localUri, username, message_token]);
+    }, [message_id, localUri]);
 
     if (loading) {
         return (

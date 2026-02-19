@@ -1,16 +1,12 @@
 import { useCallback, useState } from "react";
+import { ChatMessage } from "../components/ChatBubbles";
 import { server_config } from "../config/index";
 import { getHistory } from "../utils/getHistory";
-import { useChatLogic } from "./useChatLogic";
 
-export function useHistoryLogic() {
+export function useHistoryLogic(addHistoryMessage: (messages: ChatMessage[]) => void) {
     const [history_start_index, setHistoryStartIndex] = useState(-1); 
-    const [historyLoading, setHistoryLoading] = useState(false); 
-    const {addHistoryMessage} = useChatLogic();
+    const [historyLoading, setHistoryLoading] = useState(false);
 
-    /**
-     * 使用 useCallback 包裹以确保函数引用的稳定性
-     */
     const loadHistory = useCallback(async (
         username: string,
         token: string,
