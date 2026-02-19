@@ -40,6 +40,9 @@ export const ChatImageBubble: React.FC<{ message: ChatMessage }> = ({ message })
           message_id={uuid}
           localUri={content}
           style={styles.chatImage}
+          maxHeight={200}
+          maxWidth={200}
+          
         />
       </View>
     </View>
@@ -95,8 +98,6 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   chatImage: {
-    width: 250,
-    height: 250,
     borderRadius: 10,
   },
 });

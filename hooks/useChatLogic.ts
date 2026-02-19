@@ -49,10 +49,10 @@ export const useChatLogic = () => {
         timestamp: Date.now()
       };
       setMessages(prev => [botReply, ...prev]);
-      
+
       // 处理完成，恢复可发送状态
       setProcessing(false);
-      
+
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -69,12 +69,17 @@ export const useChatLogic = () => {
     setMessages(prev => {
       const nowScrollIndex = prev.length - 1; // 当前最新消息的索引
       // 将newMessages倒序添加到前面，这样FlatList才能正确显示历史消息
-      
+
       const next = [...prev, ...newMessages.reverse()]; // inverted order
       // 恢复之前的滚动位置
       if (nowScrollIndex >= 0) {
         setTimeout(() => {
           flatListRef.current?.scrollToIndex({ index: nowScrollIndex, animated: false });
+        }, 10);
+      } else {
+        // 如果之前没有消息了，直接滚动到最后
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
         }, 10);
       }
       return next;
@@ -89,7 +94,7 @@ export const useChatLogic = () => {
     flatListRef,
     canSend,
     canSendImage,
-    
+
     // 方法
     setInputText,
     addHistoryMessage,

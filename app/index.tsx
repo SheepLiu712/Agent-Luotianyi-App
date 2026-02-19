@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   Keyboard,
@@ -44,7 +45,7 @@ export default function Index() {
   } = useChatLogic();
 
 
-  const { loadHistory } = useHistoryLogic(addHistoryMessage);
+  const { loadHistory, historyLoading } = useHistoryLogic(addHistoryMessage);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
@@ -75,6 +76,15 @@ export default function Index() {
       console.warn('无法加载历史记录，缺少认证信息');
     }
   }, [username, message_token, loadHistory]);
+
+  const renderFooter = () => {
+  if (!historyLoading) return null;
+  return (
+    <View style={{ paddingVertical: 20 }}>
+      <ActivityIndicator size="small" color="#999" />
+    </View>
+  );
+};
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
@@ -133,10 +143,18 @@ export default function Index() {
             inverted={true} // 反转列表，使最新消息为0位置。
             renderItem={({ item }) => <MessageItem message={item} />}
             keyExtractor={(item) => item.uuid}
+            onEndReached={() => {
+              // 只有当有用户信息且当前没在加载时才触发
+              if (username && message_token && !historyLoading) {
+                loadHistory(username, message_token);
+              }
+            }}
+            onEndReachedThreshold={0.1} 
+            ListFooterComponent={renderFooter} 
             style={styles.chatList}
             contentContainerStyle={styles.chatListContent}
             showsVerticalScrollIndicator={true}
-            onContentSizeChange={() => {if(messages.length > 0) flatListRef.current?.scrollToIndex({ animated: true, index: 0 });}} // 内容变化时滚动到底部
+            
             onScrollBeginDrag={Keyboard.dismiss} // 滚动时自动收起键盘
           />
         </View>
