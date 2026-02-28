@@ -1,8 +1,9 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useRef, useState } from 'react';
 import { FlatList, Keyboard } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { ChatMessage } from '../components/ChatBubbles';
-import { textChatStream } from '../utils/chat_stream';
+import { imageChatStream, textChatStream } from '../utils/chat_stream';
 import { setExpression } from '../utils/live2d_helper';
 
 
@@ -101,9 +102,50 @@ export const useChatLogic = (webviewRef?: React.RefObject<WebView | null>) => {
   };
 
   // 发送图片消息
-  const handleSendImage = () => {
-    console.log('发送图片');
-    // TODO: 后续实现图片选择功能
+  const handleSendImage = async () => {
+    if (!canSendImage) {
+      return;
+    }
+    
+    // 1. 调用图片选择器
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false, 
+      quality: 1,
+    });
+
+    if (result.canceled || !result.assets || result.assets.length === 0) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    const imageUri = asset.uri;
+    const mimeType = asset.mimeType || 'image/jpeg'; 
+
+    // 2. 增加 ChatMessage
+    const newMessage: ChatMessage = {
+      uuid: Date.now().toString(),
+      type: 'image',
+      content: imageUri,
+      isUser: true,
+      timestamp: Date.now()
+    };
+    setMessages(prev => [newMessage, ...prev]);
+    
+    // 设置为处理中
+    setProcessing(true);
+
+    // 3. 调用流式聊天接口
+    try {
+        // cast stream to any because Generator yield types might mismatch if define strict
+        const stream = imageChatStream(imageUri, mimeType);
+        // 4. 调用 processAgentResponse
+        await processAgentResponse(stream);
+    } catch (error) {
+        console.error("Image chat failed", error);
+        addAgentMessage("Image upload failed: " + error);
+        setProcessing(false);
+    }
   };
 
   const addHistoryMessage = useCallback((newMessages: ChatMessage[]) => {
