@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Keyboard } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { ChatMessage } from '../components/ChatBubbles';
@@ -16,6 +16,7 @@ interface AgentResponse {
 
 export const useChatLogic = (webviewRef?: React.RefObject<WebView | null>) => {
   const [inputText, setInputText] = useState('');
+  const [thinking, setThinking] = useState(false); // 表示是否AI正在生成回复，用于表明系统没有卡死
   const [processing, setProcessing] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
   ]);
@@ -54,26 +55,64 @@ export const useChatLogic = (webviewRef?: React.RefObject<WebView | null>) => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, []);
 
-  const processAgentResponse = useCallback(async (stream: AsyncGenerator<AgentResponse>) => {
-    for await (const response of stream) {
-      if (response.text)
-        addAgentMessage(response.text);
-      if (response.expression)
-        setExpression(response.expression, webviewRef!);
-      if (response.audio) {
-        // 发送音频数据块
-        webviewRef!.current?.injectJavaScript(`window.feedAudioChunk('${response.audio}', false); true;`);
-      }
-
-      if (response.is_final_package) {
-        // 发送结束标志
-        webviewRef!.current?.injectJavaScript(`window.feedAudioChunk('', true); true;`);
-        await new Promise<void>((resolve) => {
-          audioFinishedResolver.current = resolve;
+  // 处理 thinking 状态
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    if (thinking) {
+      // 延迟 150ms 显示加载动画
+      timeout = setTimeout(() => {
+        setMessages(prev => {
+          // 避免重复添加
+          if (prev.some(msg => msg.type === 'loading')) return prev;
+          
+          const loadingMessage: ChatMessage = {
+            uuid: 'loading-indicator',
+            type: 'loading',
+            content: '.', 
+            isUser: false,
+            timestamp: Date.now()
+          };
+          return [loadingMessage, ...prev];
         });
-      }
+      }, 150);
+    } else {
+      // 立即移除加载动画
+      setMessages(prev => prev.filter(msg => msg.type !== 'loading'));
     }
-    setProcessing(false);
+
+    return () => clearTimeout(timeout);
+  }, [thinking]);
+
+  const processAgentResponse = useCallback(async (stream: AsyncGenerator<AgentResponse>) => {
+    setThinking(true);
+    try {
+      for await (const response of stream) {
+        setThinking(false);
+        if (response.text)
+          addAgentMessage(response.text);
+        if (response.expression)
+          setExpression(response.expression, webviewRef!);
+        if (response.audio) {
+          // 发送音频数据块
+          webviewRef!.current?.injectJavaScript(`window.feedAudioChunk('${response.audio}', false); true;`);
+        }
+
+        if (response.is_final_package) {
+          // 发送结束标志
+          webviewRef!.current?.injectJavaScript(`window.feedAudioChunk('', true); true;`);
+          await new Promise<void>((resolve) => {
+            audioFinishedResolver.current = resolve;
+          });
+          // 音频播放完，不需要再 setThinking(true) 了，任务结束
+        }
+      }
+    } catch (e) {
+      console.error("Error processing agent response:", e);
+      addAgentMessage("Error: " + e);
+    } finally {
+      setThinking(false);
+      setProcessing(false);
+    }
     }, [addAgentMessage, webviewRef]);
 
   // 发送文本消息
@@ -109,7 +148,7 @@ export const useChatLogic = (webviewRef?: React.RefObject<WebView | null>) => {
     
     // 1. 调用图片选择器
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: "images",
       allowsEditing: false, 
       quality: 1,
     });

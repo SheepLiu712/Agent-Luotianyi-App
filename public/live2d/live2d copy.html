@@ -18,6 +18,20 @@
       height: 100%;
       display: block;
     }
+    #debug-console {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 200px;
+      overflow-y: scroll;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      font-size: 10px;
+      pointer-events: none; /* 让点击穿透 */
+      z-index: 9999;
+      display: block; /* 默认开启显示 */
+    }
   </style>
     <!-- 1. PixiJS -->
   <script src="./js/pixi.min.js"></script>
@@ -27,23 +41,60 @@
   <script src="./js/cubism4.min.js"></script>
 </head>
 <body>
+  <div id="debug-console"></div>
   <canvas id="live2d"></canvas>
 
   <script>
     // === 调试工具函数 ===
+    function logToScreen(message, type = 'log') {
+      const consoleDiv = document.getElementById('debug-console');
+      if (consoleDiv) {
+        const msgDiv = document.createElement('div');
+        msgDiv.textContent = `[${type}] ${message}`;
+        msgDiv.style.color = type === 'error' ? 'red' : (type === 'warn' ? 'yellow' : 'white');
+        consoleDiv.appendChild(msgDiv);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+      }
+    }
+
+    // 拦截 console
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.log = (...args) => {
+      const msg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
+      logToScreen(msg, 'log');
+      originalLog.apply(console, args);
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'console', level: 'log', data: msg }));
+      }
+    };
+
+    console.error = (...args) => {
+      const msg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
+      logToScreen(msg, 'error');
+      originalError.apply(console, args);
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'console', level: 'error', data: msg }));
+      }
+    };
+
+    console.warn = (...args) => {
+      const msg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join(' ');
+      logToScreen(msg, 'warn');
+      originalWarn.apply(console, args);
+    };
+    
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error(`Global Error: ${message} at ${source}:${lineno}:${colno}`);
+    };
+
+    console.log('Page loaded completely');
 
     // 将 PIXI 挂载到全局供 pixi-live2d-display 读取
     window.PIXI = PIXI;
-
-    window.addEventListener('error', (event) => {
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'modelLoaded',
-          success: false,
-          error: `${event.message || 'unknown error'} at ${event.filename || ''}:${event.lineno || 0}:${event.colno || 0}`,
-        }));
-      }
-    });
+    const { Live2DModel } = PIXI.live2d;
 
     let model;
     let app;
@@ -66,14 +117,6 @@
 
     const init = async () => {
       try {
-        if (!window.PIXI) {
-          throw new Error('PIXI is not loaded');
-        }
-        if (!window.PIXI.live2d || !window.PIXI.live2d.Live2DModel) {
-          throw new Error('pixi-live2d-display is not loaded');
-        }
-        const Live2DModel = window.PIXI.live2d.Live2DModel;
-
         console.log('===== Live2D 初始化开始 =====');
         console.log('Checking PIXI:', !!window.PIXI);
         console.log('Checking Live2DModel:', !!Live2DModel);
@@ -195,6 +238,7 @@
       if (audioCtx.state === 'suspended') await audioCtx.resume();
       
       if (base64Audio) {
+        console.log('Received audio chunk, length:', base64Audio.length, 'isFinal:', isFinal);
         // 1. Base64 转 Uint8Array
         const binary = atob(base64Audio);
         const bytes = new Uint8Array(binary.length);
@@ -257,6 +301,7 @@
 
       // 6. 处理结束标志
       if (isFinal) {
+        console.log('Received final audio chunk, waiting for playback to finish');
         isWaitingForEnd = true;
         checkFinished();
       }

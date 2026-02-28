@@ -5,7 +5,7 @@ import { CachedImage } from './CachedImage';
 // 消息类型定义
 export interface ChatMessage {
   uuid: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'loading';
   content: string; // 对于文本是文字内容，对于图片是图片路径
   isUser: boolean;
   timestamp?: number;
@@ -49,8 +49,35 @@ export const ChatImageBubble: React.FC<{ message: ChatMessage }> = ({ message })
   );
 };
 
+
+// 加载中气泡组件
+export const ChatLoadingBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
+  const [dots, setDots] = React.useState('.');
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => {
+        if (prev.length >= 3) return '.';
+        return prev + '.';
+      });
+    }, 1000); // 每秒增加一个点
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <View style={styles.bubbleContainer}>
+        <View style={[styles.bubble, styles.botBubble]}>
+            <Text style={styles.bubbleText}>{dots}</Text>
+        </View>
+    </View>
+  );
+};
+
 // 统一的消息渲染组件
 export const MessageItem: React.FC<{ message: ChatMessage }> = ({ message }) => {
+  if (message.type === 'loading') { // 如果是加载中状态，显示加载气泡
+      return <ChatLoadingBubble message={message} />; 
+  }
   if (message.type === 'image') {
     return <ChatImageBubble message={message} />;
   }

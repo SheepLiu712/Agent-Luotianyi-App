@@ -28,8 +28,11 @@ export default function Index() {
 
   // 构建 live2d.html 的 URL
   // Expo 开发模式下，public 目录的文件可以通过开发服务器直接访问
+  // 在生产环境（APK）中，我们将手动把 public 文件夹复制到 android/app/src/main/assets/public
   const debuggerHost = Constants.expoConfig?.hostUri || 'localhost:8081';
-  const live2dUrl = `http://${debuggerHost}/live2d/live2d.html`;
+  const live2dUrl = __DEV__ 
+    ? `http://${debuggerHost}/live2d/live2d.html` 
+    : 'file:///android_asset/public/live2d/live2d.html';
 
   // 使用自定义 Hook 管理聊天逻辑
   const {
@@ -108,14 +111,24 @@ export default function Index() {
           ref={webviewRef}
           source={{ uri: live2dUrl }}
           style={styles.webview}
+          originWhitelist={["*"]}
           scrollEnabled={false}
           bounces={false}
+          allowFileAccess={true}
+          allowFileAccessFromFileURLs={true}
+          allowUniversalAccessFromFileURLs={true}
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
           onMessage={handleWebViewMessage}
+          onError={(event) => {
+            console.error('WebView onError:', event.nativeEvent);
+          }}
+          onHttpError={(event) => {
+            console.error('WebView onHttpError:', event.nativeEvent);
+          }}
         />
       </View>
 
