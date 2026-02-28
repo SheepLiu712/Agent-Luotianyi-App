@@ -42,7 +42,8 @@ export default function Index() {
     addHistoryMessage,
     handleSendText,
     handleSendImage,
-  } = useChatLogic();
+    handleWebViewMessage,
+  } = useChatLogic(webviewRef);
 
 
   const { loadHistory, historyLoading } = useHistoryLogic(addHistoryMessage);
@@ -114,22 +115,7 @@ export default function Index() {
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
-          onMessage={(event) => {
-            // 接收来自 WebView 的消息
-            try {
-              const data = JSON.parse(event.nativeEvent.data);
-              console.log('Live2D message:', data);
-            } catch (e) {
-              console.error('Parse message error:', e);
-            }
-          }}
-          onError={(syntheticEvent) => {
-            const { nativeEvent } = syntheticEvent;
-            console.error('WebView error:', nativeEvent);
-          }}
-          onLoadEnd={() => {
-            console.log('Live2D WebView loaded');
-          }}
+          onMessage={handleWebViewMessage}
         />
       </View>
 

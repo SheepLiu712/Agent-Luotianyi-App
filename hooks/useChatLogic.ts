@@ -1,20 +1,82 @@
 import { useCallback, useRef, useState } from 'react';
 import { FlatList, Keyboard } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { ChatMessage } from '../components/ChatBubbles';
+import { textChatStream } from '../utils/chat_stream';
+import { setExpression } from '../utils/live2d_helper';
 
-export const useChatLogic = () => {
+
+interface AgentResponse {
+  text: string;
+  audio: any;
+  expression: string;
+  is_final_package: boolean;
+}
+
+export const useChatLogic = (webviewRef?: React.RefObject<WebView | null>) => {
   const [inputText, setInputText] = useState('');
   const [processing, setProcessing] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
   ]);
   const flatListRef = useRef<FlatList>(null);
+  const audioFinishedResolver = useRef<(() => void) | null>(null);
 
   // 计算是否可以发送
   const canSend = inputText.trim().length > 0 && !processing;
   const canSendImage = !processing;
 
+  const handleWebViewMessage = useCallback((event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'audio_finished') {
+        if (audioFinishedResolver.current) {
+          audioFinishedResolver.current(); // 唤醒 processAgentResponse
+          audioFinishedResolver.current = null;
+        }
+      } else{
+        console.log('收到 WebView 消息:', data);
+      }
+    } catch (e) {
+      console.error("WebView message parse error", e);
+    }
+  }, []);
+
+  const addAgentMessage = useCallback((text: string) => {
+    const agentMessage: ChatMessage = {
+      uuid: Date.now().toString() + Math.random().toString(36).substring(2), // 确保唯一
+      type: 'text',
+      content: text,
+      isUser: false,
+      timestamp: Date.now()
+    };
+    setMessages(prev => [agentMessage, ...prev]);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
+
+  const processAgentResponse = useCallback(async (stream: AsyncGenerator<AgentResponse>) => {
+    for await (const response of stream) {
+      if (response.text)
+        addAgentMessage(response.text);
+      if (response.expression)
+        setExpression(response.expression, webviewRef!);
+      if (response.audio) {
+        // 发送音频数据块
+        webviewRef!.current?.injectJavaScript(`window.feedAudioChunk('${response.audio}', false); true;`);
+      }
+
+      if (response.is_final_package) {
+        // 发送结束标志
+        webviewRef!.current?.injectJavaScript(`window.feedAudioChunk('', true); true;`);
+        await new Promise<void>((resolve) => {
+          audioFinishedResolver.current = resolve;
+        });
+      }
+    }
+    setProcessing(false);
+    }, [addAgentMessage, webviewRef]);
+
   // 发送文本消息
-  const handleSendText = () => {
+  const handleSendText = async () => {
     if (!canSend) {
       return;
     }
@@ -33,30 +95,9 @@ export const useChatLogic = () => {
     // 设置为处理中
     setProcessing(true);
 
-    // 滚动到底部
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-
-    // TODO: 这里后续会添加调用服务器的逻辑
-    // 模拟回复
-    setTimeout(() => {
-      const botReply: ChatMessage = {
-        uuid: (Date.now() + 1).toString(),
-        type: 'text',
-        content: '我收到了你的消息~',
-        isUser: false,
-        timestamp: Date.now()
-      };
-      setMessages(prev => [botReply, ...prev]);
-
-      // 处理完成，恢复可发送状态
-      setProcessing(false);
-
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }, 1000);
+    // 调用流式聊天接口
+    const stream = textChatStream(inputText);
+    processAgentResponse(stream);
   };
 
   // 发送图片消息
@@ -100,5 +141,6 @@ export const useChatLogic = () => {
     addHistoryMessage,
     handleSendText,
     handleSendImage,
+    handleWebViewMessage
   };
 };
